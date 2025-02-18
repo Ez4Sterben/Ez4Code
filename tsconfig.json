@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "include": ["src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "electron-main/**/*.ts",
+    "electron-preload/**/*.ts"],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
