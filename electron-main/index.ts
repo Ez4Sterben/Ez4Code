@@ -61,3 +61,18 @@ ipcMain.handle('read-directory', async (event, dirPath) => {
   }
   return readDirRecursive(dirPath)
 })
+
+ipcMain.handle('read-file', async (event, filePath) => {
+  return fs.readFileSync(filePath, 'utf-8')
+})
+
+// 添加 write-file 事件处理程序
+ipcMain.handle('write-file', async (event, filePath, content) => {
+  try {
+    await fs.promises.writeFile(filePath, content, 'utf8');
+    return { success: true };
+  } catch (error) {
+    console.error('Error writing file:', error);
+    return { success: false, error: error.message };
+  }
+})
