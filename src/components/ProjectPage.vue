@@ -35,42 +35,66 @@ onMounted(async () => {
 </script>
 
 <template>
-  <el-container style="height: 100vh; width: 100vw;">
+  <el-container class="project-container">
     <el-aside width="20%" class="no-scrollbar">
       <div class="file-list">
         <FileTree v-for="item in projectTree" :key="item.name" :item="item" :base-path="route.query.folderPath" @file-clicked="loadFileContent" />
       </div>
     </el-aside>
-    <el-main style="flex: 1; display: flex; flex-direction: column;">
-      <CodeEditor v-model:value="selectedFileContent" style="flex: 1;" />
+    <el-main class="editor-main">
+      <CodeEditor v-model:value="selectedFileContent" />
     </el-main>
   </el-container>
 </template>
 
 <style scoped>
-.el-container {
-  display: flex;
+.project-container {
   height: 100vh;
   width: 100vw;
   margin: 0;
   padding: 0;
+  overflow: hidden;
+  display: flex;
 }
+
 .el-aside {
   overflow-y: auto;
   border-right: 1px solid #ccc;
+  flex-shrink: 0;
+  padding: 0 !important; /* 去除默认的padding */
+  margin: 0 !important; /* 去除默认的margin */
 }
+
 .file-list {
   display: flex;
   flex-direction: column;
   height: 100%;
   justify-content: flex-start;
+  padding-left: 0; /* 去除左侧padding */
+  margin-left: 0; /* 去除左侧margin */
+  width: 100%; /* 确保宽度填满 */
 }
-.el-main {
-  padding: 10px;
-  overflow-y: auto;
+
+.editor-main {
+  padding: 0;
+  margin: 0;
+  flex: 1;
   display: flex;
-  background-color: #282c34; /* 设置黑底背景 */
+  background-color: #282c34;
+  overflow: hidden;
+  position: relative;
 }
+
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 pre {
   white-space: pre-wrap; /* 保留原始格式 */
   word-wrap: break-word; /* 防止长行溢出 */
@@ -94,23 +118,6 @@ pre::before {
   text-align: right;
   white-space: pre-wrap;
   pointer-events: none;
-}
-.no-scrollbar::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
-.editor-container {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  margin: 0;
-  padding: 0;
-  font-family: 'Courier New', Courier, monospace; /* 使用等宽字体 */
-  line-height: 1.5; /* 设置行高 */
 }
 .view-line {
   text-align: left; /* 确保左对齐 */
