@@ -21,6 +21,12 @@ const createWindow = () => {
     win.loadURL(url);
     win.webContents.openDevTools();
   }
+  electron.app.whenReady().then(() => {
+    const shortcut = process.platform === "darwin" ? "Command+L" : "Ctrl+L";
+    electron.globalShortcut.register(shortcut, () => {
+      win.webContents.send("toggle-dialog");
+    });
+  });
 };
 electron.app.whenReady().then(() => {
   createWindow();
@@ -32,6 +38,9 @@ electron.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     electron.app.quit();
   }
+});
+electron.app.on("will-quit", () => {
+  electron.globalShortcut.unregisterAll();
 });
 electron.ipcMain.handle("select-folder", async () => {
   const result = await electron.dialog.showOpenDialog({
@@ -66,5 +75,21 @@ electron.ipcMain.handle("write-file", async (event, filePath, content) => {
   } catch (error) {
     console.error("Error writing file:", error);
     return { success: false, error: error.message };
+  }
+});
+let isProjectPageActive = false;
+electron.ipcMain.on("page-status", (event, status) => {
+  if (status === "project" && !isProjectPageActive) {
+    isProjectPageActive = true;
+    const shortcut = process.platform === "darwin" ? "Command+L" : "Ctrl+L";
+    electron.globalShortcut.register(shortcut, () => {
+      const win = electron.BrowserWindow.getFocusedWindow();
+      if (win) {
+        win.webContents.send("toggle-dialog");
+      }
+    });
+  } else if (status !== "project" && isProjectPageActive) {
+    isProjectPageActive = false;
+    electron.globalShortcut.unregisterAll();
   }
 });

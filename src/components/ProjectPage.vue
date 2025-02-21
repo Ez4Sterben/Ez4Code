@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import FileTree from './FileTree.vue'
 import CodeEditor from './CodeEditor.vue'
+import DialogPanel from './DialogPanel.vue'
 
 const { ipcRenderer } = window.require('electron')
 
@@ -11,6 +12,38 @@ const route = useRoute()
 const projectTree = ref([])
 const selectedFileContent = ref('')
 const currentFilePath = ref('')
+const isDialogVisible = ref(false)
+
+const fileTreeWidth = ref(200)
+const editorWidth = ref(600)
+const dialogWidth = ref(300)
+
+let resizing = false
+let currentResizer = ''
+
+const startResizing = (resizer: string) => {
+  resizing = true
+  currentResizer = resizer
+  window.addEventListener('mousemove', resize)
+  window.addEventListener('mouseup', stopResizing)
+}
+
+const resize = (event: MouseEvent) => {
+  if (!resizing) return
+  if (currentResizer === 'fileTree') {
+    fileTreeWidth.value = event.clientX
+    editorWidth.value = window.innerWidth - fileTreeWidth.value - dialogWidth.value
+  } else if (currentResizer === 'editor') {
+    editorWidth.value = event.clientX - fileTreeWidth.value
+    dialogWidth.value = window.innerWidth - fileTreeWidth.value - editorWidth.value
+  }
+}
+
+const stopResizing = () => {
+  resizing = false
+  window.removeEventListener('mousemove', resize)
+  window.removeEventListener('mouseup', stopResizing)
+}
 
 const loadFileContent = async (filePath: string) => {
   const content = await ipcRenderer.invoke('read-file', filePath)
@@ -26,25 +59,41 @@ watch(selectedFileContent, async (newContent) => {
 })
 
 onMounted(async () => {
+  ipcRenderer.on('toggle-dialog', () => {
+    isDialogVisible.value = !isDialogVisible.value
+  })
+
   const folderPath = route.query.folderPath as string
   if (folderPath) {
     const tree = await ipcRenderer.invoke('read-directory', folderPath)
     projectTree.value = tree
   }
+  ipcRenderer.send('page-status', 'project')
+})
+
+onBeforeUnmount(() => {
+  ipcRenderer.removeAllListeners('toggle-dialog')
+  ipcRenderer.send('page-status', 'other')
 })
 </script>
 
 <template>
-  <el-container class="project-container">
-    <el-aside width="20%" class="no-scrollbar">
+  <div class="project-container">
+    <div :style="{ width: fileTreeWidth + 'px' }" class="no-scrollbar file-tree">
       <div class="file-list">
         <FileTree v-for="item in projectTree" :key="item.name" :item="item" :base-path="route.query.folderPath" @file-clicked="loadFileContent" />
       </div>
-    </el-aside>
-    <el-main class="editor-main">
-      <CodeEditor v-model:value="selectedFileContent" />
-    </el-main>
-  </el-container>
+    </div>
+    <div class="resizer" @mousedown="startResizing('fileTree')"></div>
+    <div :style="{ width: editorWidth + 'px' }" class="editor-main">
+      <div class="code-editor-container">
+        <CodeEditor v-model:value="selectedFileContent" />
+      </div>
+      <div class="dialog-container">
+        <DialogPanel v-if="isDialogVisible" :style="{ width: dialogWidth + 'px' }" />
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -57,32 +106,47 @@ onMounted(async () => {
   display: flex;
 }
 
-.el-aside {
+.file-tree {
   overflow-y: auto;
   border-right: 1px solid #ccc;
-  flex-shrink: 0;
-  padding: 0 !important; /* 去除默认的padding */
-  margin: 0 !important; /* 去除默认的margin */
-}
-
-.file-list {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  justify-content: flex-start;
-  padding-left: 0; /* 去除左侧padding */
-  margin-left: 0; /* 去除左侧margin */
-  width: 100%; /* 确保宽度填满 */
+  padding: 0 !important;
+  margin: 0 !important;
+  background-color: #282c34;
+  color: #fff;
 }
 
 .editor-main {
-  padding: 0;
-  margin: 0;
-  flex: 1;
   display: flex;
-  background-color: #282c34;
-  overflow: hidden;
   position: relative;
+  background-color: #282c34;
+  color: #fff;
+}
+
+.code-editor-container {
+  flex: 1;
+  overflow-y: auto;
+  height: 100vh; /* 代码区域一屏高 */
+}
+
+.dialog-container {
+  width: 300px;
+  overflow-y: auto;
+  height: 100vh; /* 对话面板一屏高 */
+}
+
+.resizer {
+  width: 5px;
+  cursor: col-resize;
+  background-color: #ccc;
+  position: relative;
+  z-index: 1;
+}
+
+.dialog-panel {
+  background-color: #282c34;
+  border-left: 1px solid #ccc;
+  padding: 10px;
+  color: #fff;
 }
 
 .no-scrollbar::-webkit-scrollbar {

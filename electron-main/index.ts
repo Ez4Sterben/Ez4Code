@@ -1,5 +1,5 @@
 // electron-main/index.ts
-import { app, BrowserWindow, dialog, ipcMain } from "electron"
+import { app, BrowserWindow, dialog, ipcMain, globalShortcut } from "electron"
 import path from "path"
 import fs from 'fs'
 
@@ -21,6 +21,14 @@ const createWindow = () => {
         win.loadURL(url)
         win.webContents.openDevTools()
     }
+
+    // 注册全局快捷键
+    app.whenReady().then(() => {
+        const shortcut = process.platform === 'darwin' ? 'Command+L' : 'Ctrl+L';
+        globalShortcut.register(shortcut, () => {
+            win.webContents.send('toggle-dialog');
+        });
+    });
 }
 
 app.whenReady().then(() => {
@@ -36,6 +44,11 @@ app.on("window-all-closed", () => {
         app.quit()
     }
 })
+
+app.on('will-quit', () => {
+    // 注销所有快捷键
+    globalShortcut.unregisterAll();
+});
 
 ipcMain.handle('select-folder', async () => {
   const result = await dialog.showOpenDialog({
@@ -76,3 +89,21 @@ ipcMain.handle('write-file', async (event, filePath, content) => {
     return { success: false, error: error.message };
   }
 })
+
+let isProjectPageActive = false;
+
+ipcMain.on('page-status', (event, status) => {
+  if (status === 'project' && !isProjectPageActive) {
+    isProjectPageActive = true;
+    const shortcut = process.platform === 'darwin' ? 'Command+L' : 'Ctrl+L';
+    globalShortcut.register(shortcut, () => {
+      const win = BrowserWindow.getFocusedWindow();
+      if (win) {
+        win.webContents.send('toggle-dialog');
+      }
+    });
+  } else if (status !== 'project' && isProjectPageActive) {
+    isProjectPageActive = false;
+    globalShortcut.unregisterAll();
+  }
+});
